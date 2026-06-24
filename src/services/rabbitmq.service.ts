@@ -1,8 +1,9 @@
-import amqp, { Connection, Channel } from 'amqplib';
+import amqp from 'amqplib';
+import { sendEmail } from './emailService';
 
 class RabbitMQService {
-  private connection!: Connection;
-  private channel!: Channel;
+  private connection: any;
+  private channel: any;
   private readonly URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5672';
 
   async connect() {
@@ -24,24 +25,30 @@ class RabbitMQService {
     const exchange = 'corvus_events';
     await this.channel.assertExchange(exchange, 'topic', { durable: true });
 
-    // Cola para eventos de autenticación (Login/Logout)
+    // --- 1. Cola para eventos de autenticación (FCM Tokens) ---
     const authQueue = await this.channel.assertQueue('auth_events_queue', { durable: true });
-    
-    // Vinculamos la cola a cualquier evento que empiece con "auth.device."
     await this.channel.bindQueue(authQueue.queue, exchange, 'auth.device.*');
-
-    // Empezamos a escuchar la cola
-    this.channel.consume(authQueue.queue, (msg) => {
+    this.channel.consume(authQueue.queue, (msg: any) => {
       if (msg) {
         this.handleAuthEvent(msg);
         this.channel.ack(msg);
       }
     });
 
-    console.log('🎧 Escuchando eventos en auth_events_queue...');
+    // --- 2. Cola para eventos de correo electrónico (Email) ---
+    const emailQueue = await this.channel.assertQueue('email_events_queue', { durable: true });
+    await this.channel.bindQueue(emailQueue.queue, exchange, 'auth.password_recovery.requested');
+    this.channel.consume(emailQueue.queue, (msg: any) => {
+      if (msg) {
+        this.handleEmailEvent(msg);
+        this.channel.ack(msg);
+      }
+    });
+
+    console.log('🎧 Escuchando eventos en auth_events_queue y email_events_queue...');
   }
 
-  private handleAuthEvent(msg: amqp.ConsumeMessage) {
+  private handleAuthEvent(msg: any) {
     const routingKey = msg.fields.routingKey;
     const content = JSON.parse(msg.content.toString());
 
@@ -54,6 +61,29 @@ class RabbitMQService {
     } else if (routingKey === 'auth.device.unregistered') {
       console.log('🗑️  TODO: Eliminar FCM Token de BD');
       // await prisma.userDevice.delete(...)
+    }
+  }
+
+  private async handleEmailEvent(msg: any) {
+    const routingKey = msg.fields.routingKey;
+    const content = JSON.parse(msg.content.toString());
+
+    console.log(`📧 Evento de Email recibido [${routingKey}]:`, content.email);
+
+    if (routingKey === 'auth.password_recovery.requested') {
+      const email = content.email;
+      const pin = content.recovery_token;
+
+      // Usar Nodemailer para enviar el PIN de recuperación
+      const subject = "Código de Recuperación de Contraseña - Corvus";
+      const text = `Tu código de seguridad (PIN) de 6 dígitos es: ${pin}. Por favor introdúcelo en la aplicación para restablecer tu contraseña. Este código expirará pronto.`;
+      
+      const emailSent = await sendEmail(email, subject, text);
+      if (emailSent) {
+        console.log(`✅ Correo enviado con éxito a ${email} con el PIN ${pin}`);
+      } else {
+        console.log(`❌ Falló el envío de correo a ${email}`);
+      }
     }
   }
 }
