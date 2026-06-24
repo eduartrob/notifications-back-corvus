@@ -45,7 +45,17 @@ class RabbitMQService {
       }
     });
 
-    console.log('🎧 Escuchando eventos en auth_events_queue y email_events_queue...');
+    // --- 3. Cola para eventos de Sincronización de Drive (FCM) ---
+    const syncQueue = await this.channel.assertQueue('sync_events_queue', { durable: true });
+    await this.channel.bindQueue(syncQueue.queue, exchange, 'sync.progress');
+    this.channel.consume(syncQueue.queue, (msg: any) => {
+      if (msg) {
+        this.handleSyncEvent(msg);
+        this.channel.ack(msg);
+      }
+    });
+
+    console.log('🎧 Escuchando eventos en auth, email y sync queues...');
   }
 
   private handleAuthEvent(msg: any) {
@@ -85,6 +95,17 @@ class RabbitMQService {
         console.log(`❌ Falló el envío de correo a ${email}`);
       }
     }
+  }
+
+  private async handleSyncEvent(msg: any) {
+    const routingKey = msg.fields.routingKey;
+    const content = JSON.parse(msg.content.toString());
+
+    console.log(`📥 [RABBITMQ] Evento de Sincronización [${routingKey}]:`, content);
+
+    // TODO: Enviar notificación FCM con el progreso a Flutter.
+    // Ej: firebaseAdmin.messaging().send({ data: content, token: deviceToken })
+    // Por ahora, el backend de clustering procesará asíncronamente y veremos el log aquí.
   }
 }
 
