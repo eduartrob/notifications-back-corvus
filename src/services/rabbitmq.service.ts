@@ -1,5 +1,9 @@
 import amqp from 'amqplib';
 import { sendEmail } from './emailService';
+import FirebaseService from './firebaseService';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 class RabbitMQService {
   private connection: any;
@@ -103,9 +107,41 @@ class RabbitMQService {
 
     console.log(`📥 [RABBITMQ] Evento de Sincronización [${routingKey}]:`, content);
 
-    // TODO: Enviar notificación FCM con el progreso a Flutter.
-    // Ej: firebaseAdmin.messaging().send({ data: content, token: deviceToken })
-    // Por ahora, el backend de clustering procesará asíncronamente y veremos el log aquí.
+    const userId = content.user_id;
+    if (!userId) {
+      console.log('⚠️ No se proporcionó user_id en el evento de sincronización. Ignorando notificación Push.');
+      return;
+    }
+
+    // Buscar todos los dispositivos del usuario
+    try {
+      const devices = await prisma.userDevice.findMany({
+        where: { userId: userId }
+      });
+
+      if (devices.length === 0) {
+        console.log(`⚠️ No se encontraron dispositivos (fcmToken) para el usuario ${userId}`);
+        return;
+      }
+
+      // Enviar Push Notification a todos los dispositivos del usuario
+      const title = 'Sincronización Corvus';
+      let body = content.message || 'Actualización de progreso';
+      
+      // Enviar data payload personalizado a Flutter para que main.dart lo capture
+      const dataPayload = {
+        type: content.type_event || 'sync_progress',
+        progress: content.progress?.toString() || '0',
+        total: content.total?.toString() || '100',
+        message: body
+      };
+
+      for (const device of devices) {
+        await FirebaseService.sendPushNotification(device.fcmToken, title, body, dataPayload);
+      }
+    } catch (error) {
+      console.error('❌ Error enviando notificaciones Push desde RabbitMQ:', error);
+    }
   }
 }
 
