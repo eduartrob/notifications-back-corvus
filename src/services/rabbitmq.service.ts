@@ -1,9 +1,7 @@
 import amqp from 'amqplib';
 import { sendEmail } from './emailService';
 import FirebaseService from './firebaseService';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../utils/prisma';
 
 class RabbitMQService {
   private connection: any;
