@@ -1,4 +1,5 @@
-import * as admin from 'firebase-admin';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 import path from 'path';
 
 class FirebaseService {
@@ -9,8 +10,8 @@ class FirebaseService {
             // Inicializar usando el archivo descargado
             const serviceAccount = require(path.resolve(__dirname, '../../firebase-adminsdk.json'));
             
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
+            initializeApp({
+                credential: cert(serviceAccount)
             });
             console.log('✅ Firebase Admin SDK inicializado correctamente');
         } catch (error) {
@@ -36,7 +37,7 @@ class FirebaseService {
                 token: fcmToken
             };
 
-            const response = await admin.messaging().send(message);
+            const response = await getMessaging().send(message);
             console.log('📨 Notificación Push enviada exitosamente:', response);
             return true;
         } catch (error) {
