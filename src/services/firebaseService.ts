@@ -7,7 +7,7 @@ class FirebaseService {
 
     private constructor() {
         try {
-            // Inicializar usando el archivo descargado
+            // -# inicializar usando el archivo descargado
             const serviceAccount = require(path.resolve(__dirname, '../../firebase-adminsdk.json'));
             
             initializeApp({

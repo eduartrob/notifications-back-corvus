@@ -10,21 +10,21 @@ export const getEmailTemplate = (subject: string, message: string) => {
         
         body {
           font-family: 'Inter', Arial, sans-serif;
-          background-color: #EFF4FF; /* Surface Container */
+          background-color: #EFF4FF; 
           margin: 0;
           padding: 0;
         }
         .container {
           max-width: 600px;
           margin: 40px auto;
-          background-color: #F8F9FF; /* Surface */
+          background-color: #F8F9FF; 
           border-radius: 8px;
           overflow: hidden;
           box-shadow: 0 4px 15px rgba(30, 64, 175, 0.1);
           border: 1px solid #DBEAFE;
         }
         .header {
-          background-color: #1E40AF; /* Primary */
+          background-color: #1E40AF; 
           padding: 30px 20px;
           text-align: center;
         }
@@ -36,7 +36,7 @@ export const getEmailTemplate = (subject: string, message: string) => {
           font-weight: 700;
         }
         .header p {
-          color: #DBEAFE; /* Primary Container */
+          color: #DBEAFE; 
           margin: 5px 0 0 0;
           font-size: 14px;
           letter-spacing: 1px;
@@ -47,11 +47,11 @@ export const getEmailTemplate = (subject: string, message: string) => {
           line-height: 1.6;
         }
         .content h2 {
-          color: #1E40AF; /* Primary */
+          color: #1E40AF; 
           margin-top: 0;
           font-size: 24px;
           font-weight: 700;
-          border-bottom: 1px solid #94A3B8; /* Outline */
+          border-bottom: 1px solid #94A3B8; 
           padding-bottom: 10px;
         }
         .content p {
@@ -59,13 +59,13 @@ export const getEmailTemplate = (subject: string, message: string) => {
           font-weight: 400;
         }
         .footer {
-          background-color: #DBEAFE; /* Primary Container */
+          background-color: #DBEAFE; 
           padding: 20px;
           text-align: center;
           color: #1E40AF;
           font-size: 12px;
           font-weight: 500;
-          border-top: 1px solid #94A3B8; /* Outline */
+          border-top: 1px solid #94A3B8; 
         }
         .footer strong {
           color: #1E40AF;

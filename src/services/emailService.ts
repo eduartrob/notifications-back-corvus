@@ -18,7 +18,7 @@ export const sendEmail = async (to: string, subject: string, text: string) => {
             from: process.env.EMAIL_USER,
             to,
             subject,
-            text, // Respaldo para clientes sin soporte HTML
+            text,
             html: getEmailTemplate(subject, text)
         };
         await transporter.sendMail(mailOptions);

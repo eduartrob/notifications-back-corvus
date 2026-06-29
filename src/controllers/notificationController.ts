@@ -12,12 +12,10 @@ export const sendNotification = async (req: Request, res: Response): Promise<any
     let emailSent = false;
     let whatsappSent = false;
 
-    // Solo ejecuta envío de correo si el tipo lo indica
     if ((type === 'EMAIL' || type === 'EMAIL_AND_WHATSAPP') && toEmail && subject) {
         emailSent = await sendEmail(toEmail, subject, message);
     }
 
-    // Solo ejecuta envío de WhatsApp si el tipo lo indica
     if ((type === 'WHATSAPP' || type === 'EMAIL_AND_WHATSAPP') && toPhone) {
         whatsappSent = await sendWhatsAppMessage(toPhone, message);
     }

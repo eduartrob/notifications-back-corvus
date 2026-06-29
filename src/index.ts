@@ -17,9 +17,6 @@ app.use('/api/notifications', notificationRoutes);
 app.listen(PORT, async () => {
     console.log(`[Server] API de Notificaciones en puerto ${PORT}`);
     
-    // Conectar a RabbitMQ
     await rabbitmqService.connect();
 
-    // Deshabilitado temporalmente para pruebas locales (Evita el QR bloqueante)
-    // initializeWhatsApp();
 });
