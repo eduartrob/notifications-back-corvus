@@ -57,7 +57,7 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<a
 export const markAsRead = async (req: Request, res: Response): Promise<any> => {
     const user = getUserFromReq(req);
     if (!user || !user.id) return res.status(401).json({ error: 'No autorizado' });
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     try {
         await prisma.userNotificationStatus.upsert({
@@ -84,7 +84,7 @@ export const markAsRead = async (req: Request, res: Response): Promise<any> => {
 export const deleteNotification = async (req: Request, res: Response): Promise<any> => {
     const user = getUserFromReq(req);
     if (!user || !user.id) return res.status(401).json({ error: 'No autorizado' });
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     try {
         await prisma.userNotificationStatus.upsert({

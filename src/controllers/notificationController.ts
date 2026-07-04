@@ -2,7 +2,6 @@ import type { Request, Response } from 'express';
 import { sendEmail } from '../services/emailService';
 import { sendWhatsAppMessage } from '../services/whatsappService';
 import prisma from '../utils/prisma';
-import { sendWhatsAppMessage } from '../services/whatsappService';
 
 export const sendNotification = async (req: Request, res: Response): Promise<any> => {
     const { type, toEmail, toPhone, subject, message } = req.body;
