@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import { sendEmail } from '../services/emailService';
 import { sendWhatsAppMessage } from '../services/whatsappService';
+import prisma from '../utils/prisma';
+import { sendWhatsAppMessage } from '../services/whatsappService';
 
 export const sendNotification = async (req: Request, res: Response): Promise<any> => {
     const { type, toEmail, toPhone, subject, message } = req.body;
@@ -54,9 +56,26 @@ export const sendVisibleTopicNotification = async (req: Request, res: Response):
 
     const firebaseService = require('../services/firebaseService').default;
     
+    // 1. Enviar el Push vía FCM
     const sent = await firebaseService.sendTopicPushNotification(topic, title, body, data || {});
 
     if (sent) {
+        // 2. Guardar en Base de Datos para sincronización
+        try {
+            await prisma.globalNotification.create({
+                data: {
+                    topic,
+                    title,
+                    body,
+                    type: data?.type || 'info',
+                    authorName: data?.authorName,
+                    authorPhotoUrl: data?.authorPhotoUrl
+                }
+            });
+        } catch (dbError) {
+            console.error('Error guardando GlobalNotification:', dbError);
+        }
+
         return res.status(200).json({ message: `Push notification enviada al topic ${topic}` });
     } else {
         return res.status(500).json({ error: 'Fallo al enviar push notification al topic' });
