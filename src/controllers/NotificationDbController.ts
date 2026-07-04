@@ -1,16 +1,12 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/prisma';
-import jwt from 'jsonwebtoken';
 
-// Extraer token y verificar userId y rol (asumiendo que el gateway valida el JWT, pero necesitamos leerlo)
+// Extraer usuario del header x-user-data inyectado por el API Gateway
 const getUserFromReq = (req: Request) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return null;
-    const token = authHeader.split(' ')[1];
-    if (!token) return null;
+    const userDataStr = req.headers['x-user-data'] as string;
+    if (!userDataStr) return null;
     try {
-        const decoded = jwt.decode(token) as any;
-        return decoded;
+        return JSON.parse(userDataStr);
     } catch (e) {
         return null;
     }
