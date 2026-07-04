@@ -44,3 +44,21 @@ export const sendTopicNotification = async (req: Request, res: Response): Promis
         return res.status(500).json({ error: 'Fallo al enviar notificación al topic' });
     }
 };
+
+export const sendVisibleTopicNotification = async (req: Request, res: Response): Promise<any> => {
+    const { topic, title, body, data } = req.body;
+
+    if (!topic || !title || !body) {
+        return res.status(400).json({ error: 'Los campos "topic", "title" y "body" son requeridos.' });
+    }
+
+    const firebaseService = require('../services/firebaseService').default;
+    
+    const sent = await firebaseService.sendTopicPushNotification(topic, title, body, data || {});
+
+    if (sent) {
+        return res.status(200).json({ message: `Push notification enviada al topic ${topic}` });
+    } else {
+        return res.status(500).json({ error: 'Fallo al enviar push notification al topic' });
+    }
+};

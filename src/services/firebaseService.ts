@@ -61,6 +61,25 @@ class FirebaseService {
             return false;
         }
     }
+    public async sendTopicPushNotification(topic: string, title: string, body: string, data?: any): Promise<boolean> {
+        try {
+            const message = {
+                notification: {
+                    title,
+                    body
+                },
+                data: data || {},
+                topic: topic
+            };
+
+            const response = await getMessaging().send(message);
+            console.log(`📨 Notificación Push enviada al topic '${topic}':`, response);
+            return true;
+        } catch (error) {
+            console.error(`❌ Error enviando Push al topic '${topic}':`, error);
+            return false;
+        }
+    }
 }
 
 export default FirebaseService.getInstance();
