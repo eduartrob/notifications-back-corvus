@@ -45,6 +45,22 @@ class FirebaseService {
             return false;
         }
     }
+
+    public async sendSilentTopicMessage(topic: string, data: any): Promise<boolean> {
+        try {
+            const message = {
+                data: data || {},
+                topic: topic
+            };
+
+            const response = await getMessaging().send(message);
+            console.log(`📨 Mensaje silencioso enviado al topic '${topic}':`, response);
+            return true;
+        } catch (error) {
+            console.error(`❌ Error enviando mensaje al topic '${topic}':`, error);
+            return false;
+        }
+    }
 }
 
 export default FirebaseService.getInstance();

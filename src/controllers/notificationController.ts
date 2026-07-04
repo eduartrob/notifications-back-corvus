@@ -25,3 +25,22 @@ export const sendNotification = async (req: Request, res: Response): Promise<any
         status: { emailSent, whatsappSent }
     });
 };
+
+export const sendTopicNotification = async (req: Request, res: Response): Promise<any> => {
+    const { topic, data } = req.body;
+
+    if (!topic) {
+        return res.status(400).json({ error: 'El campo "topic" es requerido.' });
+    }
+
+    // Importar dinámicamente o asegurarse de que firebaseService esté disponible
+    const firebaseService = require('../services/firebaseService').default;
+    
+    const sent = await firebaseService.sendSilentTopicMessage(topic, data || {});
+
+    if (sent) {
+        return res.status(200).json({ message: `Notificación enviada al topic ${topic}` });
+    } else {
+        return res.status(500).json({ error: 'Fallo al enviar notificación al topic' });
+    }
+};
