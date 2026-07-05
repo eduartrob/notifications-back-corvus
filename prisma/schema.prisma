@@ -20,3 +20,28 @@ model UserDevice {
 
   @@index([userId])
 }
+
+model GlobalNotification {
+  id             String                   @id @default(uuid())
+  topic          String
+  title          String
+  body           String
+  type           String
+  authorName     String?
+  authorPhotoUrl String?
+  createdAt      DateTime                 @default(now())
+  
+  userStatus     UserNotificationStatus[]
+}
+
+model UserNotificationStatus {
+  id                   String             @id @default(uuid())
+  userId               String
+  globalNotificationId String
+  globalNotification   GlobalNotification @relation(fields: [globalNotificationId], references: [id], onDelete: Cascade)
+  isRead               Boolean            @default(false)
+  isDeleted            Boolean            @default(false)
+  updatedAt            DateTime           @updatedAt
+
+  @@unique([userId, globalNotificationId])
+}
