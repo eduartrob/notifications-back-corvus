@@ -1,5 +1,7 @@
 import amqp from 'amqplib';
 import { sendEmail } from './emailService';
+import FirebaseService from './firebaseService';
+import prisma from '../utils/prisma';
 
 class RabbitMQService {
   private connection: any;
@@ -12,20 +14,19 @@ class RabbitMQService {
       this.channel = await this.connection.createChannel();
       console.log('✅ Conectado a RabbitMQ (Notificaciones)');
 
-      // Configurar Colas
       await this.setupQueues();
     } catch (error) {
       console.error('❌ Error conectando a RabbitMQ:', error);
-      setTimeout(() => this.connect(), 5000); // Reintentar en 5s
+      setTimeout(() => this.connect(), 5000);
     }
   }
 
   private async setupQueues() {
-    // Definimos el Exchange y las Colas por codigo (No necesitas la UI de RabbitMQ)
+    // -# definimos el exchange y las colas por codigo no necesitas la ui de rabbitmq
     const exchange = 'corvus_events';
     await this.channel.assertExchange(exchange, 'topic', { durable: true });
 
-    // --- 1. Cola para eventos de autenticación (FCM Tokens) ---
+    // -# 1 cola para eventos de autenticacion fcm tokens
     const authQueue = await this.channel.assertQueue('auth_events_queue', { durable: true });
     await this.channel.bindQueue(authQueue.queue, exchange, 'auth.device.*');
     this.channel.consume(authQueue.queue, (msg: any) => {
@@ -35,7 +36,7 @@ class RabbitMQService {
       }
     });
 
-    // --- 2. Cola para eventos de correo electrónico (Email) ---
+    // -# 2 cola para eventos de correo electronico email
     const emailQueue = await this.channel.assertQueue('email_events_queue', { durable: true });
     await this.channel.bindQueue(emailQueue.queue, exchange, 'auth.password_recovery.requested');
     this.channel.consume(emailQueue.queue, (msg: any) => {
@@ -45,7 +46,7 @@ class RabbitMQService {
       }
     });
 
-    // --- 3. Cola para eventos de Sincronización de Drive (FCM) ---
+    // -# 3 cola para eventos de sincronizacion de drive fcm
     const syncQueue = await this.channel.assertQueue('sync_events_queue', { durable: true });
     await this.channel.bindQueue(syncQueue.queue, exchange, 'sync.progress');
     this.channel.consume(syncQueue.queue, (msg: any) => {
@@ -64,13 +65,10 @@ class RabbitMQService {
 
     console.log(`📥 Evento recibido [${routingKey}]:`, content);
 
-    // Aquí llamaremos a Prisma para guardar/borrar el FCM Token
     if (routingKey === 'auth.device.registered') {
       console.log('✅ TODO: Guardar FCM Token en BD');
-      // await prisma.userDevice.upsert(...)
     } else if (routingKey === 'auth.device.unregistered') {
       console.log('🗑️  TODO: Eliminar FCM Token de BD');
-      // await prisma.userDevice.delete(...)
     }
   }
 
@@ -84,7 +82,7 @@ class RabbitMQService {
       const email = content.email;
       const pin = content.recovery_token;
 
-      // Usar Nodemailer para enviar el PIN de recuperación
+      // -# usar nodemailer para enviar el pin de recuperacion
       const subject = "Código de Recuperación de Contraseña - Corvus";
       const text = `Tu código de seguridad (PIN) de 6 dígitos es: ${pin}. Por favor introdúcelo en la aplicación para restablecer tu contraseña. Este código expirará pronto.`;
       
@@ -103,9 +101,40 @@ class RabbitMQService {
 
     console.log(`📥 [RABBITMQ] Evento de Sincronización [${routingKey}]:`, content);
 
-    // TODO: Enviar notificación FCM con el progreso a Flutter.
-    // Ej: firebaseAdmin.messaging().send({ data: content, token: deviceToken })
-    // Por ahora, el backend de clustering procesará asíncronamente y veremos el log aquí.
+    const userId = content.user_id;
+    if (!userId) {
+      console.log('⚠️ No se proporcionó user_id en el evento de sincronización. Ignorando notificación Push.');
+      return;
+    }
+
+    try {
+      const devices = await prisma.userDevice.findMany({
+        where: { userId: userId }
+      });
+
+      if (devices.length === 0) {
+        console.log(`⚠️ No se encontraron dispositivos (fcmToken) para el usuario ${userId}`);
+        return;
+      }
+
+      // -# enviar push notification a todos los dispositivos del usuario
+      const title = 'Sincronización Corvus';
+      let body = content.message || 'Actualización de progreso';
+      
+      // -# enviar data payload personalizado a flutter para que maindart lo capture
+      const dataPayload = {
+        type: content.type_event || 'sync_progress',
+        progress: content.progress?.toString() || '0',
+        total: content.total?.toString() || '100',
+        message: body
+      };
+
+      for (const device of devices) {
+        await FirebaseService.sendPushNotification(device.fcmToken, title, body, dataPayload);
+      }
+    } catch (error) {
+      console.error('❌ Error enviando notificaciones Push desde RabbitMQ:', error);
+    }
   }
 }
 

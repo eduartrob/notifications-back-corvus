@@ -5,3 +5,4 @@ dist/
 .wwebjs_cache/
 
 /src/generated/prisma
+firebase-adminsdk.json
