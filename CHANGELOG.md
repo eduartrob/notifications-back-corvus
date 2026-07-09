@@ -1,3 +1,6 @@
+## [1.2.13] - 2026-07-09
+- Preparación para nueva arquitectura de Proyectos Integradores.
+
 # Changelog - Notifications Service
 
 ## [0.2.0] - 2026-06-23
