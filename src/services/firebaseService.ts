@@ -40,8 +40,26 @@ class FirebaseService {
             const response = await getMessaging().send(message);
             console.log('📨 Notificación Push enviada exitosamente:', response);
             return true;
-        } catch (error) {
-            console.error('❌ Error enviando notificación Push:', error);
+        } catch (error: any) {
+            console.error('❌ Error enviando notificación Push para el token:', fcmToken);
+            
+            // Si el token ya no es válido, lo eliminamos de la base de datos
+            if (error?.code === 'messaging/registration-token-not-registered' || 
+                error?.status === 'NOT_FOUND' || 
+                JSON.stringify(error).includes('UNREGISTERED')) {
+                console.log('⚠️ Token UNREGISTERED detectado. Eliminando de la BD...');
+                try {
+                    const prisma = require('../utils/prisma').default;
+                    await prisma.userDevice.deleteMany({
+                        where: { fcmToken: fcmToken }
+                    });
+                    console.log('✅ Token eliminado exitosamente.');
+                } catch (dbError) {
+                    console.error('Error al intentar eliminar token expirado:', dbError);
+                }
+            } else {
+                console.error(error); // Imprimir el error completo solo si es otro tipo de error
+            }
             return false;
         }
     }
