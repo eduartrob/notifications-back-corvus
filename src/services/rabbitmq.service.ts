@@ -179,6 +179,30 @@ class RabbitMQService {
       for (const device of devices) {
         await FirebaseService.sendPushNotification(device.fcmToken, title, body, dataPayload);
       }
+
+      try {
+        const globalNotif = await prisma.globalNotification.create({
+          data: {
+            topic: `user_${userId}`,
+            title: title,
+            body: body,
+            type: dataPayload.type || 'info',
+            authorName: dataPayload.authorName || null,
+            authorPhotoUrl: dataPayload.authorPhotoUrl || null
+          }
+        });
+        
+        await prisma.userNotificationStatus.create({
+          data: {
+            userId: userId,
+            globalNotificationId: globalNotif.id,
+            isRead: false,
+            isDeleted: false
+          }
+        });
+      } catch (dbError) {
+        console.error('❌ Error guardando notificacion genérica en BD:', dbError);
+      }
     } catch (error) {
       console.error('❌ Error enviando notificaciones Push genéricas:', error);
     }
