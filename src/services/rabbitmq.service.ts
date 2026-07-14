@@ -39,6 +39,7 @@ class RabbitMQService {
     // -# 2 cola para eventos de correo electronico email
     const emailQueue = await this.channel.assertQueue('email_events_queue', { durable: true });
     await this.channel.bindQueue(emailQueue.queue, exchange, 'auth.password_recovery.requested');
+    await this.channel.bindQueue(emailQueue.queue, exchange, 'auth.email_verification.requested');
     this.channel.consume(emailQueue.queue, (msg: any) => {
       if (msg) {
         this.handleEmailEvent(msg);
@@ -56,7 +57,17 @@ class RabbitMQService {
       }
     });
 
-    console.log('🎧 Escuchando eventos en auth, email y sync queues...');
+    // -# 4 cola para notificaciones push genericas
+    const pushQueue = await this.channel.assertQueue('push_events_queue', { durable: true });
+    await this.channel.bindQueue(pushQueue.queue, exchange, 'notifications.push.send');
+    this.channel.consume(pushQueue.queue, (msg: any) => {
+      if (msg) {
+        this.handlePushEvent(msg);
+        this.channel.ack(msg);
+      }
+    });
+
+    console.log('🎧 Escuchando eventos en auth, email, sync y push queues...');
   }
 
   private handleAuthEvent(msg: any) {
@@ -91,6 +102,19 @@ class RabbitMQService {
         console.log(`✅ Correo enviado con éxito a ${email} con el PIN ${pin}`);
       } else {
         console.log(`❌ Falló el envío de correo a ${email}`);
+      }
+    } else if (routingKey === 'auth.email_verification.requested') {
+      const email = content.email;
+      const pin = content.pin;
+
+      const subject = "Código de Verificación - Corvus";
+      const text = `Tu código de verificación de 6 dígitos es: ${pin}. Por favor introdúcelo en la aplicación para verificar tu correo. Este código expirará en 15 minutos.`;
+      
+      const emailSent = await sendEmail(email, subject, text);
+      if (emailSent) {
+        console.log(`✅ Correo de verificación enviado con éxito a ${email}`);
+      } else {
+        console.log(`❌ Falló el envío del correo de verificación a ${email}`);
       }
     }
   }
@@ -134,6 +158,53 @@ class RabbitMQService {
       }
     } catch (error) {
       console.error('❌ Error enviando notificaciones Push desde RabbitMQ:', error);
+    }
+  }
+
+  private async handlePushEvent(msg: any) {
+    const content = JSON.parse(msg.content.toString());
+    console.log(`📥 [RABBITMQ] Evento Push Genérico:`, content);
+
+    const userId = content.user_id;
+    if (!userId) return;
+
+    try {
+      const devices = await prisma.userDevice.findMany({ where: { userId } });
+      if (devices.length === 0) return;
+
+      const title = content.title || 'Notificación Corvus';
+      const body = content.body || '';
+      const dataPayload = content.data || {};
+
+      for (const device of devices) {
+        await FirebaseService.sendPushNotification(device.fcmToken, title, body, dataPayload);
+      }
+
+      try {
+        const globalNotif = await prisma.globalNotification.create({
+          data: {
+            topic: `user_${userId}`,
+            title: title,
+            body: body,
+            type: dataPayload.type || 'info',
+            authorName: dataPayload.authorName || null,
+            authorPhotoUrl: dataPayload.authorPhotoUrl || null
+          }
+        });
+        
+        await prisma.userNotificationStatus.create({
+          data: {
+            userId: userId,
+            globalNotificationId: globalNotif.id,
+            isRead: false,
+            isDeleted: false
+          }
+        });
+      } catch (dbError) {
+        console.error('❌ Error guardando notificacion genérica en BD:', dbError);
+      }
+    } catch (error) {
+      console.error('❌ Error enviando notificaciones Push genéricas:', error);
     }
   }
 }

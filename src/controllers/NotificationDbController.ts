@@ -20,6 +20,13 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<a
         // En un caso real, filtramos por topic al que el usuario pertenece.
         // Aquí traeremos todas las globales y las cruzaremos con el estado del usuario.
         const globalNotifications = await prisma.globalNotification.findMany({
+            where: {
+                OR: [
+                    { topic: 'all' },
+                    { topic: `user_${user.id}` },
+                    { topic: 'config_updates' }
+                ]
+            },
             orderBy: { createdAt: 'desc' }
         });
 
