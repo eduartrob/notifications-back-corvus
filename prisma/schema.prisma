@@ -27,6 +27,7 @@ model GlobalNotification {
   title          String
   body           String
   type           String
+  deepLink       String?
   authorName     String?
   authorPhotoUrl String?
   createdAt      DateTime                 @default(now())
