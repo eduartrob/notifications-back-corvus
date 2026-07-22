@@ -124,11 +124,30 @@ class RabbitMQService {
       const body = content.body || '';
       const dataPayload = content.data || {};
       const deepLink: string | null = content.deepLink || dataPayload.deepLink || null;
+      const incomingFcmToken: string | null = content.incomingFcmToken || null;
+
+      // -# Detectar inicio de sesion desde dispositivo nuevo
+      let actualType = content.type || dataPayload.type || 'info';
+      let actualTitle = title;
+      let actualBody = body;
+      let actualDeepLink = deepLink;
+
+      if (incomingFcmToken && devices.length > 0) {
+        const isNewDevice = !devices.some(d => d.fcmToken === incomingFcmToken);
+        if (isNewDevice) {
+          // Sobrescribir como alerta de seguridad
+          actualType = 'security_new_device';
+          actualTitle = '⚠️ Nuevo inicio de sesión detectado';
+          actualBody = 'Tu cuenta fue accedida desde un nuevo dispositivo. ¿Eres tú? Toca para verificar.';
+          actualDeepLink = '/security-alert';
+        }
+      }
 
       for (const device of devices) {
-        await FirebaseService.sendPushNotification(device.fcmToken, title, body, {
+        await FirebaseService.sendPushNotification(device.fcmToken, actualTitle, actualBody, {
           ...dataPayload,
-          ...(deepLink ? { deepLink } : {})
+          type: actualType,
+          ...(actualDeepLink ? { deepLink: actualDeepLink } : {})
         });
       }
 
@@ -137,10 +156,10 @@ class RabbitMQService {
         const globalNotif = await prisma.globalNotification.create({
           data: {
             topic: `user_${userId}`,
-            title,
-            body,
-            type: content.type || dataPayload.type || 'info',
-            deepLink,
+            title: actualTitle,
+            body: actualBody,
+            type: actualType,
+            deepLink: actualDeepLink,
             authorName: content.authorName || dataPayload.authorName || null,
             authorPhotoUrl: content.authorPhotoUrl || dataPayload.authorPhotoUrl || null
           }
