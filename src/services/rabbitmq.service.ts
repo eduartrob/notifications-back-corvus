@@ -143,8 +143,17 @@ class RabbitMQService {
         }
       }
 
-      // -# Guardar en BD primero para tener el ID
-      let savedNotificationId = null;
+      for (const device of devices) {
+        await FirebaseService.sendPushNotification(device.fcmToken, actualTitle, actualBody, {
+          ...dataPayload,
+          type: actualType,
+          ...(actualDeepLink ? { deepLink: actualDeepLink } : {}),
+          authorName: content.authorName || dataPayload.authorName || '',
+          authorPhotoUrl: content.authorPhotoUrl || dataPayload.authorPhotoUrl || ''
+        });
+      }
+
+      // -# Guardar en BD
       try {
         const globalNotif = await prisma.globalNotification.create({
           data: {
@@ -157,7 +166,6 @@ class RabbitMQService {
             authorPhotoUrl: content.authorPhotoUrl || dataPayload.authorPhotoUrl || null
           }
         });
-        savedNotificationId = globalNotif.id;
 
         await prisma.userNotificationStatus.create({
           data: {
@@ -169,17 +177,6 @@ class RabbitMQService {
         });
       } catch (dbError) {
         console.error('❌ Error guardando notificación en BD:', dbError);
-      }
-
-      for (const device of devices) {
-        await FirebaseService.sendPushNotification(device.fcmToken, actualTitle, actualBody, {
-          ...dataPayload,
-          type: actualType,
-          notificationId: savedNotificationId || `temp_${Date.now()}`,
-          ...(actualDeepLink ? { deepLink: actualDeepLink } : {}),
-          authorName: content.authorName || dataPayload.authorName || '',
-          authorPhotoUrl: content.authorPhotoUrl || dataPayload.authorPhotoUrl || ''
-        });
       }
     } catch (error) {
       console.error('❌ Error enviando Push genérica:', error);
