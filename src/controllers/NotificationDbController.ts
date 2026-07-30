@@ -47,6 +47,7 @@ export const getMyNotifications = async (req: Request, res: Response): Promise<a
                 title: notif.title,
                 body: notif.body,
                 type: notif.type,
+                deepLink: notif.deepLink,
                 timestamp: notif.createdAt,
                 isRead: status?.isRead || false,
                 authorName: notif.authorName,
